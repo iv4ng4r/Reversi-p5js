@@ -73,18 +73,19 @@ function updateUI(){
 
 //render
 function showBoard(){
-
+	noValidMovements = true
 	ended = true
 	for(row of board){
 		for(piece of row){
 			piece.valid = false
 			valid = checkMovement(piece.i, piece.j)
-			if(valid) piece.valid = true
+			if(valid) {piece.valid = true; noValidMovements = false}
 			piece.show()
 			if(piece.team == EMPTY) ended = false
 		}
 	}
 	if(ended) endgame();
+	if(noValidMovements) alert("You cannot move!! (Refresh to restart)")
 }
 function mousePressed(){
 	if (enable_ia){
@@ -104,12 +105,15 @@ function movement(i, j){
 		
 		board[i][j].team = turn;
 		flips = chainFlips(i, j, turn)
+		for(flip of flips)
+			flip.team = turn
+		console.log('flips: '+flips.length)
+		white_score += (turn == WHITE) ? flips.length + 1 : -flips.length;
+		black_score += (turn == BLACK) ? flips.length + 1 : -flips.length;
 		
-		white_score += (turn == WHITE) ? flips + 1 : -flips;
-		black_score += (turn == BLACK) ? flips + 1 : -flips;
-		
-		showBoard()
 		changeTurn()
+		showBoard()
+		
 		updateUI()
 		
 
@@ -126,7 +130,7 @@ function endgame(){
 }
 
 function chainFlips(i, j, team){
-	flips = 0
+	flips = []
 	//look left
 	leftcell = undefined
 	if(i > 0)
@@ -210,16 +214,16 @@ function chainFlips(i, j, team){
 	
 	
 	if(leftcell != undefined){
-		for(b = i-1; b > leftcell; b--) {board[b][j].team = team; flips++}
+		for(b = i-1; b > leftcell; b--) {flips.push(board[b][j])}
 	}
 	if(rightcell != undefined){
-		for(b = i+1; b < rightcell; b++) {board[b][j].team = team; flips++}
+		for(b = i+1; b < rightcell; b++) {flips.push(board[b][j])}
 	}
 	if(upcell != undefined){
-		for(b = j-1; b > upcell; b--) {board[i][b].team = team; flips++}
+		for(b = j-1; b > upcell; b--) {flips.push(board[i][b])}
 	}
 	if(downcell != undefined){
-		for(b = j+1; b < downcell; b++) {board[i][b].team = team; flips++}
+		for(b = j+1; b < downcell; b++) {flips.push(board[i][b])}
 	}
 	
 	//DIAG FLIPS
@@ -227,30 +231,27 @@ function chainFlips(i, j, team){
 		[a, b] = upleftcell
 		x = i-1
 		y = j-1
-		console.log(x +' - '+y)
-		while(x > a || y > b) {board[x][y].team = team; flips++; x--; y--;}
+		while(x > a || y > b) {flips.push(board[x][y]); x--; y--;}
 	}
 	if(downleftcell != undefined){
 		[a, b] = downleftcell
 		x = i-1
 		y = j+1
-		console.log(x +' - '+y)
-		while(x > a || y < b) {board[x][y].team = team; flips++; x--; y++;}
+		while(x > a || y < b) {flips.push(board[x][y]); x--; y++;}
 	}
 	if(uprightcell != undefined){
 		[a, b] = uprightcell
 		x = i+1
 		y = j-1
-		console.log(x +' - '+y)
-		while(x < a || y > b) {board[x][y].team = team; flips++; x++; y--;}
+		while(x < a || y > b) {flips.push(board[x][y]); x++; y--;}
 	}
 	if(downrightcell != undefined){
 		[a, b] = downrightcell
 		x = i+1
 		y = j+1
-		console.log(x +' - '+y)
-		while(x < a || y < b) {board[x][y].team = team; flips++; x++; y++;}
+		while(x < a || y < b) {flips.push(board[x][y]); x++; y++;}
 	}
+	
 	return flips
 	
 
@@ -272,8 +273,9 @@ function checkMovement(x, y){ //returns 1 if valid, 0 if non-empty cell, -1 if n
 	try{if(board[x+1][y-1].team != EMPTY) neighbors = true}catch(e){} //up right
 
 	//MUST SCORE - todo
+	movementScore = chainFlips(x, y, turn).length > 0
 	
-	return empty && neighbors
+	return empty && neighbors && movementScore
 	
 }
 function changeTurn(){
